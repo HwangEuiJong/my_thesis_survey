@@ -1,0 +1,6 @@
+{
+  "name": "hrd-chatbot-survey",
+  "version": "1.0.0",
+  "description": "AI 챗봇 기반 직무역량진단 시스템 — 경희대학교 박사학위논문 연구",
+  "private": true
+}

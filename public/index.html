@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 챗봇 직무역량진단 체험 — 경희대학교 박사학위논문 연구</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    background: #F0F4F8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+
+  /* ── 안내 카드 ── */
+  .intro-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 32px;
+    max-width: 720px;
+    width: 100%;
+    margin-bottom: 20px;
+    border: 1px solid #E2E8F0;
+  }
+  .badge {
+    display: inline-block;
+    background: #EBF5FB;
+    color: #1A3A5C;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .intro-card h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1A3A5C;
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+  .intro-card p {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.75;
+    margin-bottom: 8px;
+  }
+  .notice {
+    background: #F8F9FA;
+    border-left: 3px solid #1D9E75;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #444;
+    line-height: 1.7;
+    border-radius: 0 6px 6px 0;
+    margin-top: 14px;
+  }
+  .btn-start {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: #1A3A5C;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-start:hover { background: #142d48; }
+
+  /* ── 챗봇 컨테이너 ── */
+  .chat-wrap {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 720px;
+    width: 100%;
+    border: 1px solid #E2E8F0;
+    display: none;
+    flex-direction: column;
+    height: 580px;
+    overflow: hidden;
+  }
+  .chat-wrap.active { display: flex; }
+
+  .chat-header {
+    background: #1A3A5C;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .header-avatar {
+    width: 36px; height: 36px;
+    background: #1D9E75;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .header-info h2 { font-size: 15px; font-weight: 600; color: #fff; }
+  .header-info p { font-size: 12px; color: #AAB7C4; margin-top: 2px; }
+  .status-dot {
+    width: 8px; height: 8px;
+    background: #1D9E75; border-radius: 50%;
+    margin-left: auto;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .progress-bar { height: 3px; background: #E2E8F0; flex-shrink: 0; }
+  .progress-fill { height: 100%; background: #1D9E75; transition: width .5s ease; width: 0%; }
+  .turn-info { font-size: 11px; color: #AAB7C4; text-align: right; padding: 4px 20px 0; flex-shrink: 0; }
+
+  .chat-body {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+    scroll-behavior: smooth;
+  }
+  .msg { display: flex; gap: 10px; align-items: flex-start; max-width: 85%; }
+  .msg.bot { align-self: flex-start; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg-av {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #1D9E75; display: flex; align-items: center;
+    justify-content: center; font-size: 16px; flex-shrink: 0; margin-top: 2px;
+  }
+  .bubble {
+    padding: 12px 16px; border-radius: 16px;
+    font-size: 14px; line-height: 1.65; color: #222;
+    white-space: pre-wrap;
+  }
+  .msg.bot .bubble { background: #F0F4F8; border-bottom-left-radius: 4px; }
+  .msg.user .bubble { background: #1A3A5C; color: #fff; border-bottom-right-radius: 4px; }
+
+  .typing {
+    display: flex; gap: 4px; align-items: center;
+    padding: 14px 16px; background: #F0F4F8;
+    border-radius: 16px; border-bottom-left-radius: 4px; width: fit-content;
+  }
+  .typing span {
+    width: 7px; height: 7px; background: #888;
+    border-radius: 50%; animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-6px);opacity:1} }
+
+  .input-area {
+    padding: 14px 16px; border-top: 1px solid #E2E8F0;
+    display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
+  }
+  textarea {
+    flex: 1; padding: 10px 14px; border: 1.5px solid #D1D5DB;
+    border-radius: 10px; font-size: 14px; font-family: inherit;
+    resize: none; outline: none; line-height: 1.5;
+    max-height: 100px; min-height: 42px; color: #333; transition: border-color .2s;
+  }
+  textarea:focus { border-color: #1A3A5C; }
+  textarea:disabled { background: #F5F5F5; color: #999; }
+  .btn-send {
+    width: 42px; height: 42px; background: #1A3A5C; border: none;
+    border-radius: 10px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0; transition: background .2s;
+  }
+  .btn-send:hover { background: #142d48; }
+  .btn-send:disabled { background: #B0BEC5; cursor: not-allowed; }
+  .btn-send svg { width: 18px; height: 18px; fill: #fff; }
+
+  /* ── 완료 카드 ── */
+  .done-card {
+    background: #fff; border-radius: 16px; padding: 36px 32px;
+    max-width: 720px; width: 100%; margin-top: 20px;
+    border: 1px solid #E2E8F0; text-align: center; display: none;
+  }
+  .done-card.show { display: block; }
+  .done-icon { font-size: 52px; margin-bottom: 16px; }
+  .done-card h2 { font-size: 22px; font-weight: 700; color: #1A3A5C; margin-bottom: 12px; }
+  .done-card p { font-size: 14px; color: #666; line-height: 1.75; margin-bottom: 24px; }
+  .btn-survey {
+    display: inline-block; padding: 15px 40px;
+    background: #1D9E75; color: #fff; text-decoration: none;
+    border-radius: 10px; font-size: 16px; font-weight: 600;
+    transition: background .2s;
+  }
+  .btn-survey:hover { background: #0F6E56; }
+
+  .chat-body::-webkit-scrollbar { width: 4px; }
+  .chat-body::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- 안내 카드 -->
+<div class="intro-card" id="introCard">
+  <span class="badge">경희대학교 경영학과 박사학위논문 연구</span>
+  <h1>AI 챗봇 기반 직무역량진단 시스템 체험</h1>
+  <p>본 연구는 AI 챗봇이 HRD 담당자의 직무역량을 대화로 진단하는 새로운 방식에 대한 수용의도를 연구합니다.</p>
+  <p>아래 버튼을 누르시면 AI 챗봇이 실제 업무 상황을 제시하고 귀하의 답변을 탐색하는 <strong>역량진단 대화</strong>가 시작됩니다. 약 5~7번의 대화를 나누신 후 설문에 응답해 주시면 됩니다.</p>
+  <p>챗봇은 <strong>'교육체계 수립 직무'</strong>의 수행준거를 기반으로 설계되었습니다. 정답은 없으며, 편하게 실제 경험을 바탕으로 응답해 주시면 됩니다.</p>
+  <div class="notice">
+    ⏱ 소요 시간: 챗봇 체험 약 5분 + 설문 약 10분<br>
+    🔒 모든 대화 내용은 익명으로 처리되며 연구 목적 외에는 사용되지 않습니다.<br>
+    📩 문의: 경희대학교 경영학과 박사과정 황의종 (edutreekr@daum.net)
+  </div>
+  <button class="btn-start" onclick="startExperience()">🤖 AI 챗봇 체험 시작하기</button>
+</div>
+
+<!-- 챗봇 -->
+<div class="chat-wrap" id="chatWrap">
+  <div class="chat-header">
+    <div class="header-avatar">🤖</div>
+    <div class="header-info">
+      <h2>역량진단 AI 챗봇</h2>
+      <p>NCS 교육체계 수립 직무 · 0403010202_22v2</p>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="turn-info" id="turnInfo"></div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="input-area">
+    <textarea id="userInput" placeholder="답변을 입력해 주세요..." rows="1" disabled
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="btn-send" id="sendBtn" onclick="send()" disabled>
+      <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- 완료 카드 -->
+<div class="done-card" id="doneCard">
+  <div class="done-icon">✅</div>
+  <h2>챗봇 체험이 완료되었습니다!</h2>
+  <p>
+    AI 챗봇과의 대화 체험에 참여해 주셔서 진심으로 감사드립니다.<br>
+    이제 아래 버튼을 눌러 설문에 응답해 주시면 연구가 완성됩니다.<br>
+    설문 소요 시간은 약 10분입니다.
+  </p>
+  <a href="YOUR_SURVEY_LINK_HERE" target="_blank" class="btn-survey">📋 설문 응답하기</a>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// NCS 0403010202_22v2 + 온톨로지 v3 기반 시스템 프롬프트
+// ══════════════════════════════════════════════════════════
+const SYSTEM_PROMPT = `당신은 교육체계 수립 직무를 기반으로 HRD 담당자의 직무역량을 진단하는 AI 챗봇입니다.
+
+[능력단위 온톨로지 구조 — requires/enables 관계]
+1. 필요점 분석 (.1) → enables: 교육방침설정, 핵심과제설정
+2. 교육방침 설정 (.2) → requires: 필요점분석 / enables: 핵심과제설정
+3. 핵심과제 설정 (.3) → requires: 교육방침설정, 필요점분석 / enables: 중장기교육체계수립
+4. 중장기 교육체계 수립 (.4) → requires: 핵심과제설정 / enables: 년도별교육계획수립
+5. 년도별 교육계획 수립 (.5) → requires: 중장기교육체계수립
+
+[수준 체계 Lv.3~Lv.5]
+■ 필요점 분석:
+  Lv3: 부서 단위 교육 필요점을 수집·정리할 수 있다
+  Lv4: 조직 전체 역량 Gap을 분석하여 전략적 필요점을 도출할 수 있다
+  Lv5: 비즈니스 전략과 연계하여 중장기 필요점을 선제적으로 도출할 수 있다
+■ 교육방침 설정:
+  Lv3: 상위 방침을 이해하고 부서 단위 교육목표를 설정할 수 있다
+  Lv4: 조직 전략과 연계한 교육목표와 추진방침을 수립할 수 있다
+  Lv5: 경영진을 설득할 수 있는 전략적 교육방침을 독자적으로 수립할 수 있다
+■ 핵심과제 설정:
+  Lv3: 주어진 방침에 따라 교육과제 목록을 작성할 수 있다
+  Lv4: 교육과제와 교육업무과제를 구분하고 우선순위를 설정할 수 있다
+  Lv5: 비즈니스 임팩트를 고려하여 핵심과제를 전략적으로 도출할 수 있다
+■ 중장기 교육체계 수립:
+  Lv3: 표준 양식에 따라 교육체계도 초안을 작성할 수 있다
+  Lv4: 직군별·수준별 교육체계도를 독립적으로 설계하고 작성할 수 있다
+  Lv5: 3~5년 중장기 로드맵을 포함한 통합 교육체계를 설계할 수 있다
+■ 년도별 교육계획 수립:
+  Lv3: 제시된 양식에 따라 년도별 교육계획서 초안을 작성할 수 있다
+  Lv4: 중장기 체계와 연계하여 년도별 계획을 독립적으로 수립할 수 있다
+  Lv5: 경영계획과 연동된 년도별 교육계획을 전략적으로 수립하고 설득할 수 있다
+
+[대화 진행 원칙]
+1. 첫 메시지: 친근하게 인사 후 상황을 제시하고 첫 질문을 합니다.
+   【상황】 귀하는 중견 IT기업의 HRD 팀장입니다. 오늘 아침 대표이사로부터 긴급 메일을 받았습니다.
+   "개발직군 50명 확대에 따라 교육체계를 3주 내 재설계해 주세요."
+   【첫 질문】 이 상황에서 가장 먼저 무엇을 하시겠습니까?
+
+2. 응답 수준 판별 후 온톨로지 기반 분기:
+   ■ Lv3 수준 (부서 단위, 양식 참고, 지시에 따른 수행):
+     → 필요점 분석 탐색: 교육 필요점 파악 방법, 설문·인터뷰 경험 질문
+   ■ Lv4 수준 (조직 전체, 전략 연계, 독립적 수행):
+     → 중장기 교육체계 수립 심화: 직군별·수준별 교육체계도 설계 경험 질문
+   ■ Lv5 수준 (경영진 설득, 비즈니스 연계, 선제적 기획):
+     → 최상위: 중장기 HRD 로드맵 수립·경영진 보고 경험 질문
+
+3. 추이적 추론 적용:
+   - 경험 없음 → requires 역방향: 선행 능력단위요소로 돌아가 탐색
+   - 경험 있음 → enables 순방향: 다음 단계로 심화 탐색
+
+4. 질문은 한 번에 하나만, 총 6~8턴 진행
+
+5. 마지막 턴: 강점 중심으로 2~3줄 요약 후
+   "오늘 대화에 성실하게 참여해 주셔서 감사합니다. 이제 아래 설문에 응답해 주시면 연구에 큰 도움이 됩니다." 로 마무리
+
+[말투]
+- 친근하고 전문적인 한국어, 존댓말
+- 응답자를 평가하는 인상을 주지 않음
+- 수준을 숫자·등급으로 표현하지 않음
+- 질문은 반드시 하나씩만`;
+
+// ══════════════════════════════════════════════════════════
+let messages = [];
+let turnCount = 0;
+const MAX_TURNS = 8;
+let isDone = false;
+
+// 체험 시작
+function startExperience() {
+  document.getElementById('introCard').style.display = 'none';
+  document.getElementById('chatWrap').classList.add('active');
+  initChat();
+}
+
+async function initChat() {
+  showTyping();
+  const reply = await callAPI([]);
+  hideTyping();
+  appendMsg('bot', reply);
+  messages.push({ role: 'assistant', content: reply });
+  turnCount++;
+  updateProgress();
+  enableInput();
+}
+
+// 메시지 전송
+async function send() {
+  if (isDone) return;
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  disableInput();
+
+  appendMsg('user', text);
+  messages.push({ role: 'user', content: text });
+  turnCount++;
+  updateProgress();
+
+  showTyping();
+  const reply = await callAPI(messages);
+  hideTyping();
+
+  appendMsg('bot', reply);
+  messages.push({ role: 'assistant', content: reply });
+  turnCount++;
+  updateProgress();
+
+  const done = turnCount >= MAX_TURNS * 2 ||
+    reply.includes('설문에 응답') ||
+    reply.includes('체험이 완료') ||
+    reply.includes('감사합니다. 이제');
+
+  if (done) {
+    isDone = true;
+    setTimeout(showDone, 1500);
+  } else {
+    enableInput();
+  }
+}
+
+// Vercel 서버리스 API 호출 (API 키 노출 없음)
+async function callAPI(msgHistory) {
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          ...msgHistory
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || '서버 오류');
+    }
+
+    const data = await res.json();
+    return data.choices[0].message.content;
+
+  } catch (e) {
+    return `죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요. (${e.message})`;
+  }
+}
+
+// UI 헬퍼
+function appendMsg(role, text) {
+  const body = document.getElementById('chatBody');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  if (role === 'bot') {
+    const av = document.createElement('div');
+    av.className = 'msg-av';
+    av.textContent = '🤖';
+    wrap.appendChild(av);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  body.appendChild(wrap);
+  body.scrollTop = body.scrollHeight;
+}
+
+let typingEl = null;
+function showTyping() {
+  const body = document.getElementById('chatBody');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  wrap.id = 'typing';
+  const av = document.createElement('div');
+  av.className = 'msg-av';
+  av.textContent = '🤖';
+  const ind = document.createElement('div');
+  ind.className = 'typing';
+  ind.innerHTML = '<span></span><span></span><span></span>';
+  wrap.appendChild(av);
+  wrap.appendChild(ind);
+  body.appendChild(wrap);
+  body.scrollTop = body.scrollHeight;
+  typingEl = wrap;
+}
+function hideTyping() {
+  if (typingEl) { typingEl.remove(); typingEl = null; }
+}
+
+function enableInput() {
+  document.getElementById('userInput').disabled = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('userInput').focus();
+}
+function disableInput() {
+  document.getElementById('userInput').disabled = true;
+  document.getElementById('sendBtn').disabled = true;
+}
+
+function updateProgress() {
+  const pct = Math.min((turnCount / (MAX_TURNS * 2)) * 100, 95);
+  document.getElementById('progressFill').style.width = pct + '%';
+  const rem = Math.max(MAX_TURNS - Math.floor(turnCount / 2), 1);
+  document.getElementById('turnInfo').textContent =
+    isDone ? '' : `예상 남은 대화: 약 ${rem}회`;
+}
+
+function showDone() {
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('turnInfo').textContent = '';
+  document.getElementById('doneCard').classList.add('show');
+  disableInput();
+  document.getElementById('doneCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+</script>
+</body>
+</html>
