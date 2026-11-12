@@ -22,6 +22,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log("챗봇 API 호출:", new Date().toISOString());
     const { messages } = req.body;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
