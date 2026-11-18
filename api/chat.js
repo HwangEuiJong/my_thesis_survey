@@ -2,6 +2,8 @@
 // OpenAI API 키는 환경변수(OPENAI_API_KEY)에만 저장됨
 // 응답자 브라우저에 키가 노출되지 않음
 
+let visitorCount = 0;
+
 export default async function handler(req, res) {
   // CORS 설정
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,8 +24,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("챗봇 API 호출:", new Date().toISOString());
-    const { messages } = req.body;
+    const { messages, sessionId } = req.body;
+
+    // 첫 대화 시작 시점(system 프롬프트만 있거나 sessionId가 없을 때) 새로운 순번 부여
+    let simId = sessionId;
+    const isNewSession = !simId && (!messages || messages.length <= 1);
+
+    if (isNewSession) {
+      visitorCount += 1;
+      simId = `SIM-${String(visitorCount).padStart(3, '0')}`;
+      console.log(`[${new Date().toISOString()}] [NEW_SESSION] 참여자 순번 부여: ${simId}`);
+    } else {
+      if (!simId) {
+        visitorCount += 1;
+        simId = `SIM-${String(visitorCount).padStart(3, '0')}`;
+      }
+      const lastUserMsg = Array.isArray(messages)
+        ? [...messages].reverse().find((m) => m.role === 'user')?.content || ''
+        : '';
+      console.log(`[${new Date().toISOString()}] [${simId}] 대화 진행 | 응답: ${lastUserMsg.slice(0, 100)}`);
+    }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -41,13 +61,22 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const err = await response.json();
+      console.error(`[${new Date().toISOString()}] [${simId}] OpenAI API 오류:`, err.error?.message);
       throw new Error(err.error?.message || 'OpenAI API 오류');
     }
 
     const data = await response.json();
-    return res.status(200).json(data);
+    const botReply = data.choices?.[0]?.message?.content || '';
+    console.log(`[${new Date().toISOString()}] [${simId}] 챗봇 응답 완료: ${botReply.slice(0, 100)}`);
+
+    // 기존 프론트엔드 구조(data.choices[0].message.content)를 그대로 유지하면서 simId 추가 반환
+    return res.status(200).json({
+      ...data,
+      simId
+    });
 
   } catch (error) {
+    console.error(`[${new Date().toISOString()}] 서버 에러:`, error.message);
     return res.status(500).json({ error: error.message });
   }
 }
